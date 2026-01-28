@@ -1,6 +1,10 @@
 from fastapi import APIRouter
+from app.api.v1.endpoints import businesses
 
 api_router = APIRouter(prefix="/api/v1")
 
-# сюда позже подключим эндпоинты:
-# api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(
+    businesses.router,
+    prefix="/businesses",
+    tags=["businesses"],
+)
