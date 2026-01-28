@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.db.base import Base
-from app.models import business  # <-- важно, чтобы модель импортировалась
+from app.models import business, user  # <-- важно, чтобы модель импортировалась
 
 config = context.config
 

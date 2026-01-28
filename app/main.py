@@ -13,3 +13,6 @@ app.include_router(api_router)
 @app.get("/health", tags=["health"])
 def health_check():
     return {"status": "ok"}
+
+
+
