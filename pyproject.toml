@@ -1,0 +1,11 @@
+[project]
+name = "saas-booking-backend"
+version = "0.1.0"
+description = "Backend-first SaaS booking platform"
+requires-python = ">=3.11"
+
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic-settings",
+]
