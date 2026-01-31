@@ -10,6 +10,8 @@ from app.models.user import User
 from app.models.business import Business
 from app.models.service import Service
 from app.models.staff import Staff # <-- важно, чтобы модель импортировалась
+from app.models import staff_service
+
 
 config = context.config
 

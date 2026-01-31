@@ -4,35 +4,13 @@ from sqlalchemy import (
     String,
     Boolean,
     DateTime,
-    Table,
-    ForeignKey,
 )
+
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 
 from app.db.base import Base
-
-
-# =========================
-# Association table (NEW)
-# =========================
-staff_services = Table(
-    "staff_services",
-    Base.metadata,
-    Column(
-        "staff_id",
-        Integer,
-        ForeignKey("staff.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "service_id",
-        Integer,
-        ForeignKey("services.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-)
 
 
 class Staff(Base):
@@ -57,11 +35,8 @@ class Staff(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-
-services = relationship(
-        "Service",
-        secondary=staff_services,
+    staff_services = relationship(
+        "StaffService",
         back_populates="staff",
-        lazy="selectin",
+        cascade="all, delete-orphan",
     )
-

@@ -4,8 +4,13 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.staff import StaffCreate, StaffUpdate, StaffRead
 from app.services.staff import StaffService
+from app.models.staff_service import StaffService as StaffServiceModel
+from app.schemas.staff_service import StaffServiceRead
 from app.models.service import Service
 from app.schemas.services import ServiceRead
+from app.models.staff import Staff
+
+
 
 
 router = APIRouter()
@@ -75,6 +80,8 @@ def delete_staff(
 def attach_service_to_staff(
     staff_id: int,
     service_id: int,
+    price: int,
+    duration: int | None = None,
     db: Session = Depends(get_db),
 ):
     staff = db.query(Staff).filter(Staff.id == staff_id).first()
@@ -85,16 +92,33 @@ def attach_service_to_staff(
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
 
-    if service in staff.services:
+    existing = (
+        db.query(StaffServiceModel)
+        .filter(
+            StaffServiceModel.staff_id == staff_id,
+            StaffServiceModel.service_id == service_id,
+            StaffServiceModel.is_active == True,
+        )
+        .first()
+    )
+    if existing:
         raise HTTPException(
             status_code=400,
             detail="Service already attached to staff",
         )
 
-    staff.services.append(service)
+    staff_service = StaffServiceModel(
+        staff_id=staff_id,
+        service_id=service_id,
+        price=price,
+        duration=duration,
+    )
+
+    db.add(staff_service)
     db.commit()
 
     return {"detail": "Service attached to staff"}
+
 
 
 @router.delete(
@@ -106,26 +130,29 @@ def detach_service_from_staff(
     service_id: int,
     db: Session = Depends(get_db),
 ):
-    staff = db.query(Staff).filter(Staff.id == staff_id).first()
-    if not staff:
-        raise HTTPException(status_code=404, detail="Staff not found")
+    staff_service = (
+        db.query(StaffServiceModel)
+        .filter(
+            StaffServiceModel.staff_id == staff_id,
+            StaffServiceModel.service_id == service_id,
+            StaffServiceModel.is_active == True,
+        )
+        .first()
+    )
 
-    service = db.query(Service).filter(Service.id == service_id).first()
-    if not service:
-        raise HTTPException(status_code=404, detail="Service not found")
-
-    if service not in staff.services:
+    if not staff_service:
         raise HTTPException(
-            status_code=400,
+            status_code=404,
             detail="Service not attached to staff",
         )
 
-    staff.services.remove(service)
+    staff_service.is_active = False
     db.commit()
+
 
 @router.get(
     "/{staff_id}/services",
-    response_model=list[ServiceRead],
+    response_model=list[StaffServiceRead],
 )
 def list_services_for_staff(
     staff_id: int,
@@ -135,5 +162,16 @@ def list_services_for_staff(
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
 
-    return staff.services
+    return [
+        StaffServiceRead(
+            service_id=ss.service.id,
+            service_name=ss.service.name,
+            price=ss.price,
+            duration=ss.duration,
+            is_active=ss.is_active,
+        )
+        for ss in staff.staff_services
+        if ss.is_active
+    ]
+
 
