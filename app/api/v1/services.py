@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.services import ServiceCreate, ServiceUpdate, ServiceRead
 from app.services.services import ServiceService
+from app.schemas.staff import StaffRead
 
 router = APIRouter()
 
@@ -63,3 +64,18 @@ def delete_service(
     db: Session = Depends(get_db),
 ):
     ServiceService.delete_service(db, service_id)
+
+@router.get(
+    "/{service_id}/staff",
+    response_model=list[StaffRead],
+)
+def list_staff_for_service(
+    service_id: int,
+    db: Session = Depends(get_db),
+):
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return service.staff
+

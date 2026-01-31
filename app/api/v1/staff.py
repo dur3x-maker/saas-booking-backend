@@ -5,6 +5,8 @@ from app.db.session import get_db
 from app.schemas.staff import StaffCreate, StaffUpdate, StaffRead
 from app.services.staff import StaffService
 from app.models.service import Service
+from app.schemas.services import ServiceRead
+
 
 router = APIRouter()
 
@@ -120,4 +122,18 @@ def detach_service_from_staff(
 
     staff.services.remove(service)
     db.commit()
+
+@router.get(
+    "/{staff_id}/services",
+    response_model=list[ServiceRead],
+)
+def list_services_for_staff(
+    staff_id: int,
+    db: Session = Depends(get_db),
+):
+    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    return staff.services
 
