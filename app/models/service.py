@@ -2,6 +2,9 @@
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from app.models.staff import staff_services
+
 
 from app.db.base import Base
 
@@ -24,4 +27,10 @@ class Service(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now()
+    )
+    staff = relationship(
+        "Staff",
+        secondary=staff_services,
+        back_populates="services",
+        lazy="selectin",
     )

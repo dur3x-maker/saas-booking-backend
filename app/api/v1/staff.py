@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.staff import StaffCreate, StaffUpdate, StaffRead
 from app.services.staff import StaffService
+from app.models.service import Service
 
 router = APIRouter()
 
@@ -63,3 +64,60 @@ def delete_staff(
     db: Session = Depends(get_db),
 ):
     StaffService.delete_staff(db, staff_id)
+
+
+@router.post(
+    "/{staff_id}/services/{service_id}",
+    status_code=status.HTTP_201_CREATED,
+)
+def attach_service_to_staff(
+    staff_id: int,
+    service_id: int,
+    db: Session = Depends(get_db),
+):
+    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if service in staff.services:
+        raise HTTPException(
+            status_code=400,
+            detail="Service already attached to staff",
+        )
+
+    staff.services.append(service)
+    db.commit()
+
+    return {"detail": "Service attached to staff"}
+
+
+@router.delete(
+    "/{staff_id}/services/{service_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def detach_service_from_staff(
+    staff_id: int,
+    service_id: int,
+    db: Session = Depends(get_db),
+):
+    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if service not in staff.services:
+        raise HTTPException(
+            status_code=400,
+            detail="Service not attached to staff",
+        )
+
+    staff.services.remove(service)
+    db.commit()
+
