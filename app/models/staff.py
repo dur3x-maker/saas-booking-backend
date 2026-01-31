@@ -40,3 +40,14 @@ class Staff(Base):
         back_populates="staff",
         cascade="all, delete-orphan",
     )
+    working_hours = relationship(
+    "WorkingHours",
+    back_populates="staff",
+    cascade="all, delete-orphan",
+)
+
+time_off = relationship(
+    "TimeOff",
+    back_populates="staff",
+    cascade="all, delete-orphan",
+)
