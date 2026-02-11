@@ -13,7 +13,5 @@ class BusinessCreate(BusinessBase):
 class BusinessRead(BusinessBase):
     id: int
     is_active: bool
-    owner_id: int | None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

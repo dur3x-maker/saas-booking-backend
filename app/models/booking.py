@@ -47,6 +47,12 @@ class Booking(Base):
         index=True,
     )
 
+    customer_id: Mapped[int] = mapped_column(
+        ForeignKey("customers.id"),
+        nullable=False,
+        index=True,
+    )
+
     start_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     end_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
@@ -71,7 +77,6 @@ class Booking(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    customer_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     comment: Mapped[str | None] = mapped_column(String, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -83,6 +88,7 @@ class Booking(Base):
     business: Mapped["Business"] = relationship(back_populates="bookings")
     staff: Mapped["Staff"] = relationship(back_populates="bookings")
     staff_service: Mapped["StaffService"] = relationship(back_populates="bookings")
+    customer: Mapped["Customer"] = relationship(back_populates="bookings")
 
     __table_args__ = (
         # Составной индекс для быстрого поиска пересечений по сотруднику

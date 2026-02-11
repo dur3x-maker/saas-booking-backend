@@ -14,11 +14,13 @@ from app.models.service import Service
 from app.models.staff_service import StaffService
 from app.models.working_hours import WorkingHours
 from app.models.time_off import TimeOff
+from app.models.customer import Customer
 from app.repositories import (
     bookings as bookings_repo,
     staff_services as staff_services_repo,
     working_hours as working_hours_repo,
     time_off as time_off_repo,
+    customers as customers_repo,
 )
 
 # HOLD живёт 10 минут
@@ -75,8 +77,9 @@ class BookingService:
         service_id: int,
         start_at: datetime,
         confirm: bool = False,
-        customer_name: Optional[str] = None,
-        customer_phone: Optional[str] = None,
+        customer_name: str,
+        customer_phone: str,
+        customer_email: Optional[str] = None,
         comment: Optional[str] = None,
     ) -> Booking:
         """
@@ -110,7 +113,25 @@ class BookingService:
             end_at=end_at,
         )
 
-        # --- 3. Конкурентная запись: BEGIN IMMEDIATE ---
+        # --- 3. Get-or-create customer ---
+        customer = customers_repo.get_by_phone(
+            session, business_id=business_id, phone=customer_phone,
+        )
+        if customer is None:
+            customer = Customer(
+                business_id=business_id,
+                name=customer_name,
+                phone=customer_phone,
+                email=customer_email,
+            )
+            customers_repo.create(session, customer)
+        else:
+            # Обновляем имя/email если переданы новые значения
+            customer.name = customer_name
+            if customer_email is not None:
+                customer.email = customer_email
+
+        # --- 4. Конкурентная запись: BEGIN IMMEDIATE ---
         self._begin_immediate(session)
 
         try:
@@ -136,6 +157,7 @@ class BookingService:
                 business_id=business_id,
                 staff_id=staff_id,
                 staff_service_id=staff_service.id,
+                customer_id=customer.id,
                 start_at=start_at,
                 end_at=end_at,
                 price=price,
@@ -143,7 +165,6 @@ class BookingService:
                 status=status,
                 expires_at=expires_at,
                 customer_name=customer_name,
-                customer_phone=customer_phone,
                 comment=comment,
             )
 

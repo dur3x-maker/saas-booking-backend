@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -20,17 +20,10 @@ class Business(Base):
         server_default=func.now(),
     )
 
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-
-    owner = relationship(
-        "User",
-        foreign_keys=[owner_id],
-    )
-
-    users = relationship(
-        "User",
+    business_users = relationship(
+        "BusinessUser",
         back_populates="business",
-        foreign_keys="User.business_id",
+        cascade="all, delete-orphan",
     )
 
     staff = relationship(
@@ -59,6 +52,12 @@ class Business(Base):
 
     time_off = relationship(
         "TimeOff",
+        back_populates="business",
+        cascade="all, delete-orphan",
+    )
+
+    customers = relationship(
+        "Customer",
         back_populates="business",
         cascade="all, delete-orphan",
     )

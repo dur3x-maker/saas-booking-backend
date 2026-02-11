@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.api.deps import get_db, get_current_business, BusinessContext
 from app.models.working_hours import WorkingHours
 from app.schemas.working_hours import (
     WorkingHoursCreate,
@@ -19,11 +19,11 @@ router = APIRouter(tags=["Working Hours"])
     status_code=201,
 )
 def create_working_hours(
-    business_id: int,
     payload: WorkingHoursCreate,
     session: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
-    wh = WorkingHours(**payload.dict(), business_id=business_id)
+    wh = WorkingHours(**payload.dict(), business_id=ctx.business_id)
     return repo.create(session=session, wh=wh)
 
 
@@ -32,15 +32,15 @@ def create_working_hours(
     response_model=list[WorkingHoursRead],
 )
 def list_working_hours(
-    business_id: int,
     staff_id: int,
     session: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
     return (
         session.query(WorkingHours)
         .filter(
             WorkingHours.staff_id == staff_id,
-            WorkingHours.business_id == business_id,
+            WorkingHours.business_id == ctx.business_id,
         )
         .order_by(WorkingHours.weekday, WorkingHours.start_time)
         .all()

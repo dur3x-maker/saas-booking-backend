@@ -1,23 +1,155 @@
-# SaaS Booking Platform (Backend-focused)
+# SaaS Booking Backend
 
-Multi-tenant SaaS backend for service booking.
-Designed as a scalable alternative to Yclients / Dikidi.
+Multi-tenant backend для онлайн-записи на услуги. Проектируется как масштабируемая альтернатива Yclients / Dikidi с акцентом на чистую архитектуру, изоляцию данных между бизнесами и корректную обработку конкурентных бронирований.
 
-## Key Features
-- Multi-tenant architecture (multiple businesses)
-- Role-based access (owner / staff)
-- Scheduling engine with conflict validation
-- Booking lifecycle management
-- SaaS tariff limits (Free / Pro)
+Система позволяет нескольким пользователям управлять несколькими бизнесами через единый API. Каждый бизнес содержит собственный набор сотрудников, услуг, клиентов, расписаний и бронирований. Доступ к данным бизнеса контролируется через JWT-аутентификацию и заголовок `X-Business-ID`.
 
-## Tech Stack
-- FastAPI
-- PostgreSQL
-- SQLAlchemy / SQLModel
-- Alembic
-- JWT Auth
-- Docker
+## Стек технологий
 
-## Project Status
-MVP — backend-first.
-Frontend is intentionally minimal.
+- **FastAPI** -- HTTP-фреймворк
+- **SQLAlchemy 2.0** -- ORM
+- **Alembic** -- миграции базы данных
+- **SQLite** (WAL mode) -- хранилище данных
+- **python-jose** -- JWT-токены (HS256)
+- **passlib + bcrypt** -- хеширование паролей
+
+## Архитектура
+
+### JWT-аутентификация
+
+При регистрации создается пользователь (`users`). При логине выдается JWT-токен:
+
+```json
+{
+  "sub": "42",
+  "iat": 1739271600,
+  "exp": 1739358000,
+  "jti": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+- **sub** -- идентификатор пользователя
+- **iat** -- время выдачи токена
+- **exp** -- время истечения (по умолчанию 24 часа)
+- **jti** -- уникальный идентификатор токена (UUID v4)
+
+Токен передается в заголовке `Authorization: Bearer <token>`.
+
+### X-Business-ID scoping
+
+Все tenant-scoped эндпоинты требуют заголовок `X-Business-ID`. Система проверяет, что текущий пользователь имеет доступ к указанному бизнесу через таблицу `business_users`. Если заголовок отсутствует -- возвращается `400`. Если у пользователя нет доступа -- `403`.
+
+Это обеспечивает полную изоляцию данных между бизнесами на уровне каждого запроса.
+
+## Модель ролей
+
+Связь пользователя с бизнесом хранится в таблице `business_users` с полем `role`:
+
+| Роль | Описание |
+|------|----------|
+| **owner** | Полный доступ. Может управлять участниками бизнеса, менять роли, приглашать и удалять пользователей. |
+| **admin** | CRUD сотрудников, услуг, клиентов, расписаний, бронирований. Не может управлять участниками бизнеса. |
+
+Иерархия: `owner > admin`. Один пользователь может быть участником нескольких бизнесов с разными ролями.
+
+## Бизнес-логика бронирования
+
+1. Клиент выбирает сотрудника, услугу и время
+2. Система проверяет: рабочие часы, отсутствия (time-off), пересечения с существующими бронированиями
+3. Бронирование создается в статусе `HOLD` или `CONFIRMED`
+4. `HOLD` автоматически истекает через заданное время
+5. Конкурентный доступ обеспечивается через `BEGIN IMMEDIATE` (SQLite) -- два параллельных бронирования на один слот невозможны
+6. При бронировании автоматически создается или находится клиент по номеру телефона (get-or-create)
+
+## Запуск локально
+
+```bash
+# Клонирование
+git clone <repo-url>
+cd saas-booking-backend
+
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Применение миграций
+python -m alembic upgrade head
+
+# Запуск сервера
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Документация API
+# http://127.0.0.1:8000/docs
+```
+
+Переменные окружения (опционально):
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `JWT_SECRET` | `CHANGE_ME_LATER` | Секрет для подписи JWT |
+| `JWT_ALG` | `HS256` | Алгоритм подписи |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Время жизни токена (минуты) |
+
+## Примеры curl-запросов
+
+### Регистрация
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "owner@example.com", "password": "secret123"}'
+```
+
+### Логин
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "owner@example.com", "password": "secret123"}'
+# -> {"access_token": "eyJ...", "token_type": "bearer"}
+```
+
+### Создание бизнеса
+
+```bash
+curl -X POST http://localhost:8000/api/v1/businesses/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Salon", "timezone": "Europe/Moscow"}'
+```
+
+### Приглашение администратора
+
+```bash
+curl -X POST http://localhost:8000/api/v1/business-users/invite \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Business-ID: 1" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@example.com", "role": "admin"}'
+```
+
+### Tenant-scoped эндпоинт (список сотрудников)
+
+```bash
+curl http://localhost:8000/api/v1/staff \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Business-ID: 1"
+```
+
+### Текущий пользователь (/me)
+
+```bash
+curl http://localhost:8000/api/v1/me \
+  -H "Authorization: Bearer <token>"
+```
+
+### Текущий контекст бизнеса (/context)
+
+```bash
+curl http://localhost:8000/api/v1/context \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Business-ID: 1"
+```
+
+## Статус проекта
+
+MVP -- backend-first. Frontend намеренно не реализован.

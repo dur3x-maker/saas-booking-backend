@@ -12,6 +12,8 @@ from app.models.service import Service
 from app.models.staff import Staff
 from app.models import staff_service
 from app.models.booking import Booking
+from app.models.business_user import BusinessUser
+from app.models.customer import Customer
 from app.models.working_hours import WorkingHours
 from app.models.time_off import TimeOff
 

@@ -8,7 +8,6 @@ def create_user(db: Session, email: str, password: str) -> User:
     user = User(
         email=email,
         hashed_password=hash_password(password),
-        role="owner",
     )
     db.add(user)
     db.commit()
@@ -18,7 +17,7 @@ def create_user(db: Session, email: str, password: str) -> User:
 
 def authenticate_user(db: Session, email: str, password: str) -> User | None:
     user = db.query(User).filter(User.email == email).first()
-    if not user:
+    if not user or not user.is_active:
         return None
     if not verify_password(password, user.hashed_password):
         return None

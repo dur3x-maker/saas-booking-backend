@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.api.deps import get_db, get_current_business, BusinessContext
 from app.services.schedule_service import ScheduleService
 from app.services.booking_service import SLOT_STEP_MINUTES, BOOKING_HORIZON_DAYS
 
@@ -14,11 +14,11 @@ router = APIRouter(tags=["Schedule"])
 
 @router.get("/schedule/staff/{staff_id}/slots")
 def get_staff_slots(
-    business_id: int,
     staff_id: int,
     service_id: int = Query(..., description="Service ID"),
     day: date = Query(..., description="Target day (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
     now = datetime.utcnow()
     today = now.date()
@@ -43,7 +43,7 @@ def get_staff_slots(
     try:
         slots = schedule_service.get_slots_for_day(
             session=db,
-            business_id=business_id,
+            business_id=ctx.business_id,
             staff_id=staff_id,
             service_id=service_id,
             day=day,

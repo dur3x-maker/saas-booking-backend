@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.api.deps import get_db, get_current_business, BusinessContext
 from app.schemas.staff import StaffCreate, StaffUpdate, StaffRead
 from app.services.staff import StaffService
 from app.models.staff_service import StaffService as StaffServiceModel
@@ -9,8 +9,6 @@ from app.schemas.staff_service import StaffServiceRead
 from app.models.service import Service
 from app.schemas.services import ServiceRead
 from app.models.staff import Staff
-
-
 
 
 router = APIRouter(tags=["Staff"])
@@ -22,11 +20,11 @@ router = APIRouter(tags=["Staff"])
     status_code=status.HTTP_201_CREATED,
 )
 def create_staff(
-    business_id: int,
     data: StaffCreate,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
-    return StaffService.create_staff(db, data, business_id=business_id)
+    return StaffService.create_staff(db, data, business_id=ctx.business_id)
 
 
 @router.get(
@@ -34,11 +32,11 @@ def create_staff(
     response_model=list[StaffRead],
 )
 def list_staff(
-    business_id: int,
     only_active: bool = True,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
-    return StaffService.list_staff(db, only_active, business_id=business_id)
+    return StaffService.list_staff(db, only_active, business_id=ctx.business_id)
 
 
 @router.get(
@@ -46,11 +44,11 @@ def list_staff(
     response_model=StaffRead,
 )
 def get_staff(
-    business_id: int,
     staff_id: int,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
-    return StaffService.get_staff(db, staff_id, business_id=business_id)
+    return StaffService.get_staff(db, staff_id, business_id=ctx.business_id)
 
 
 @router.patch(
@@ -58,12 +56,12 @@ def get_staff(
     response_model=StaffRead,
 )
 def update_staff(
-    business_id: int,
     staff_id: int,
     data: StaffUpdate,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
-    return StaffService.update_staff(db, staff_id, data, business_id=business_id)
+    return StaffService.update_staff(db, staff_id, data, business_id=ctx.business_id)
 
 
 @router.delete(
@@ -71,11 +69,11 @@ def update_staff(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_staff(
-    business_id: int,
     staff_id: int,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
-    StaffService.delete_staff(db, staff_id, business_id=business_id)
+    StaffService.delete_staff(db, staff_id, business_id=ctx.business_id)
 
 
 @router.post(
@@ -83,13 +81,14 @@ def delete_staff(
     status_code=status.HTTP_201_CREATED,
 )
 def attach_service_to_staff(
-    business_id: int,
     staff_id: int,
     service_id: int,
     price: int,
     duration: int | None = None,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
+    business_id = ctx.business_id
     staff = db.query(Staff).filter(
         Staff.id == staff_id, Staff.business_id == business_id,
     ).first()
@@ -136,10 +135,10 @@ def attach_service_to_staff(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def detach_service_from_staff(
-    business_id: int,
     staff_id: int,
     service_id: int,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
     staff_service = (
         db.query(StaffServiceModel)
@@ -166,12 +165,12 @@ def detach_service_from_staff(
     response_model=list[StaffServiceRead],
 )
 def list_services_for_staff(
-    business_id: int,
     staff_id: int,
     db: Session = Depends(get_db),
+    ctx: BusinessContext = Depends(get_current_business),
 ):
     staff = db.query(Staff).filter(
-        Staff.id == staff_id, Staff.business_id == business_id,
+        Staff.id == staff_id, Staff.business_id == ctx.business_id,
     ).first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
