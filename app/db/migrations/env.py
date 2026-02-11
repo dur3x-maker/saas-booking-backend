@@ -9,8 +9,11 @@ from app.db.base import Base
 from app.models.user import User
 from app.models.business import Business
 from app.models.service import Service
-from app.models.staff import Staff # <-- важно, чтобы модель импортировалась
+from app.models.staff import Staff
 from app.models import staff_service
+from app.models.booking import Booking
+from app.models.working_hours import WorkingHours
+from app.models.time_off import TimeOff
 
 
 config = context.config

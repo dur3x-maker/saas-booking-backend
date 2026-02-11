@@ -1,24 +1,39 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Enum, String, Integer
+from sqlalchemy import DateTime, ForeignKey, Enum, String, Integer, Boolean, Index, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 
 class BookingStatus(enum.Enum):
-    pending = "pending"
-    confirmed = "confirmed"
-    cancelled = "cancelled"
-    completed = "completed"
-    no_show = "no_show"
+    """
+    HOLD      — временная бронь, ожидает подтверждения (expires_at задан)
+    CONFIRMED — подтверждённая бронь
+    CANCELLED — отменённая бронь (не блокирует слоты)
+    EXPIRED   — HOLD, у которого истёк expires_at (не блокирует слоты)
+    """
+    HOLD = "hold"
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
+
+
+# Статусы, которые блокируют временной слот сотрудника
+BLOCKING_STATUSES = (BookingStatus.HOLD, BookingStatus.CONFIRMED)
 
 
 class Booking(Base):
     __tablename__ = "bookings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    business_id: Mapped[int] = mapped_column(
+        ForeignKey("businesses.id"),
+        nullable=False,
+        index=True,
+    )
 
     staff_id: Mapped[int] = mapped_column(
         ForeignKey("staff.id"),
@@ -32,18 +47,28 @@ class Booking(Base):
         index=True,
     )
 
-    start_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
-    end_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    start_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    end_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
-    # фиксируем состояние услуги на момент бронирования
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+        index=True,
+    )
+
+    # snapshot — фиксируем состояние услуги на момент бронирования
     price: Mapped[int] = mapped_column(nullable=False)
     duration_min: Mapped[int] = mapped_column(nullable=False)
 
     status: Mapped[BookingStatus] = mapped_column(
-        Enum(BookingStatus),
-        default=BookingStatus.pending,
+        Enum(BookingStatus, values_callable=lambda x: [e.value for e in x]),
+        default=BookingStatus.HOLD,
         nullable=False,
     )
+
+    # для HOLD-бронирований: время, после которого бронь считается истёкшей
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
     customer_phone: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -55,5 +80,17 @@ class Booking(Base):
         nullable=False,
     )
 
+    business: Mapped["Business"] = relationship(back_populates="bookings")
     staff: Mapped["Staff"] = relationship(back_populates="bookings")
     staff_service: Mapped["StaffService"] = relationship(back_populates="bookings")
+
+    __table_args__ = (
+        # Составной индекс для быстрого поиска пересечений по сотруднику
+        Index(
+            "ix_bookings_staff_overlap",
+            "staff_id",
+            "start_at",
+            "end_at",
+            "status",
+        ),
+    )

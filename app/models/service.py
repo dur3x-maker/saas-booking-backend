@@ -1,6 +1,6 @@
 # app/models/service.py
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -13,6 +13,13 @@ class Service(Base):
     __tablename__ = "services"
 
     id = Column(Integer, primary_key=True, index=True)
+
+    business_id = Column(
+        Integer,
+        ForeignKey("businesses.id"),
+        nullable=False,
+        index=True,
+    )
 
     name = Column(String(255), nullable=False)
     description = Column(String(1000), nullable=True)
@@ -28,6 +35,8 @@ class Service(Base):
         server_default=func.now(),
         onupdate=func.now()
     )
+    business = relationship("Business", back_populates="services")
+
     staff_services = relationship(
         "StaffService",
         back_populates="service",

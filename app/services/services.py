@@ -10,12 +10,12 @@ from app.schemas.services import ServiceCreate, ServiceUpdate
 class ServiceService:
 
     @staticmethod
-    def create_service(db: Session, data: ServiceCreate):
-        return ServiceRepository.create(db, data)
+    def create_service(db: Session, data: ServiceCreate, *, business_id: int):
+        return ServiceRepository.create(db, data, business_id=business_id)
 
     @staticmethod
-    def get_service(db: Session, service_id: int):
-        service = ServiceRepository.get_by_id(db, service_id)
+    def get_service(db: Session, service_id: int, *, business_id: int):
+        service = ServiceRepository.get_by_id(db, service_id, business_id=business_id)
         if not service:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -24,19 +24,21 @@ class ServiceService:
         return service
 
     @staticmethod
-    def list_services(db: Session, only_active: bool = True):
-        return ServiceRepository.list(db, only_active)
+    def list_services(db: Session, only_active: bool = True, *, business_id: int):
+        return ServiceRepository.list(db, only_active, business_id=business_id)
 
     @staticmethod
     def update_service(
         db: Session,
         service_id: int,
-        data: ServiceUpdate
+        data: ServiceUpdate,
+        *,
+        business_id: int,
     ):
-        service = ServiceService.get_service(db, service_id)
+        service = ServiceService.get_service(db, service_id, business_id=business_id)
         return ServiceRepository.update(db, service, data)
 
     @staticmethod
-    def delete_service(db: Session, service_id: int):
-        service = ServiceService.get_service(db, service_id)
+    def delete_service(db: Session, service_id: int, *, business_id: int):
+        service = ServiceService.get_service(db, service_id, business_id=business_id)
         return ServiceRepository.soft_delete(db, service)

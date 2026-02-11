@@ -1,7 +1,7 @@
 from datetime import time
 
 from sqlalchemy import (
-    Integer, Time, Boolean, ForeignKey, UniqueConstraint
+    Integer, Time, Boolean, ForeignKey, UniqueConstraint, Column,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,12 @@ class WorkingHours(Base):
     __tablename__ = "working_hours"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    business_id: Mapped[int] = mapped_column(
+        ForeignKey("businesses.id"),
+        nullable=False,
+        index=True,
+    )
 
     staff_id: Mapped[int] = mapped_column(
         ForeignKey("staff.id"),
@@ -29,6 +35,7 @@ class WorkingHours(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    business: Mapped["Business"] = relationship(back_populates="working_hours")
     staff: Mapped["Staff"] = relationship(back_populates="working_hours")
 
     __table_args__ = (

@@ -13,82 +13,92 @@ from app.models.staff import Staff
 
 
 
-router = APIRouter()
+router = APIRouter(tags=["Staff"])
 
 
 @router.post(
-    "/",
+    "/staff",
     response_model=StaffRead,
     status_code=status.HTTP_201_CREATED,
 )
 def create_staff(
+    business_id: int,
     data: StaffCreate,
     db: Session = Depends(get_db),
 ):
-    return StaffService.create_staff(db, data)
+    return StaffService.create_staff(db, data, business_id=business_id)
 
 
 @router.get(
-    "/",
+    "/staff",
     response_model=list[StaffRead],
 )
 def list_staff(
+    business_id: int,
     only_active: bool = True,
     db: Session = Depends(get_db),
 ):
-    return StaffService.list_staff(db, only_active)
+    return StaffService.list_staff(db, only_active, business_id=business_id)
 
 
 @router.get(
-    "/{staff_id}",
+    "/staff/{staff_id}",
     response_model=StaffRead,
 )
 def get_staff(
+    business_id: int,
     staff_id: int,
     db: Session = Depends(get_db),
 ):
-    return StaffService.get_staff(db, staff_id)
+    return StaffService.get_staff(db, staff_id, business_id=business_id)
 
 
 @router.patch(
-    "/{staff_id}",
+    "/staff/{staff_id}",
     response_model=StaffRead,
 )
 def update_staff(
+    business_id: int,
     staff_id: int,
     data: StaffUpdate,
     db: Session = Depends(get_db),
 ):
-    return StaffService.update_staff(db, staff_id, data)
+    return StaffService.update_staff(db, staff_id, data, business_id=business_id)
 
 
 @router.delete(
-    "/{staff_id}",
+    "/staff/{staff_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_staff(
+    business_id: int,
     staff_id: int,
     db: Session = Depends(get_db),
 ):
-    StaffService.delete_staff(db, staff_id)
+    StaffService.delete_staff(db, staff_id, business_id=business_id)
 
 
 @router.post(
-    "/{staff_id}/services/{service_id}",
+    "/staff/{staff_id}/services/{service_id}",
     status_code=status.HTTP_201_CREATED,
 )
 def attach_service_to_staff(
+    business_id: int,
     staff_id: int,
     service_id: int,
     price: int,
     duration: int | None = None,
     db: Session = Depends(get_db),
 ):
-    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    staff = db.query(Staff).filter(
+        Staff.id == staff_id, Staff.business_id == business_id,
+    ).first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
 
-    service = db.query(Service).filter(Service.id == service_id).first()
+    service = db.query(Service).filter(
+        Service.id == service_id, Service.business_id == business_id,
+    ).first()
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
 
@@ -122,10 +132,11 @@ def attach_service_to_staff(
 
 
 @router.delete(
-    "/{staff_id}/services/{service_id}",
+    "/staff/{staff_id}/services/{service_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def detach_service_from_staff(
+    business_id: int,
     staff_id: int,
     service_id: int,
     db: Session = Depends(get_db),
@@ -151,14 +162,17 @@ def detach_service_from_staff(
 
 
 @router.get(
-    "/{staff_id}/services",
+    "/staff/{staff_id}/services",
     response_model=list[StaffServiceRead],
 )
 def list_services_for_staff(
+    business_id: int,
     staff_id: int,
     db: Session = Depends(get_db),
 ):
-    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    staff = db.query(Staff).filter(
+        Staff.id == staff_id, Staff.business_id == business_id,
+    ).first()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
 

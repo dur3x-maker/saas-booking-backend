@@ -28,6 +28,7 @@ class StaffUpdate(BaseModel):
 
 class StaffRead(StaffBase):
     id: int
+    business_id: int
     created_at: datetime
     updated_at: datetime
 

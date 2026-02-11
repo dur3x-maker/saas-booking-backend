@@ -7,24 +7,31 @@ from app.schemas.staff import StaffCreate, StaffUpdate
 class StaffRepository:
 
     @staticmethod
-    def create(db: Session, data: StaffCreate) -> Staff:
-        staff = Staff(**data.model_dump())
+    def create(db: Session, data: StaffCreate, *, business_id: int) -> Staff:
+        staff = Staff(**data.model_dump(), business_id=business_id)
         db.add(staff)
         db.commit()
         db.refresh(staff)
         return staff
 
     @staticmethod
-    def get_by_id(db: Session, staff_id: int) -> Staff | None:
+    def get_by_id(
+        db: Session, staff_id: int, *, business_id: int,
+    ) -> Staff | None:
         return (
             db.query(Staff)
-            .filter(Staff.id == staff_id)
+            .filter(
+                Staff.id == staff_id,
+                Staff.business_id == business_id,
+            )
             .first()
         )
 
     @staticmethod
-    def list(db: Session, only_active: bool = True) -> list[Staff]:
-        query = db.query(Staff)
+    def list(
+        db: Session, only_active: bool = True, *, business_id: int,
+    ) -> list[Staff]:
+        query = db.query(Staff).filter(Staff.business_id == business_id)
         if only_active:
             query = query.filter(Staff.is_active.is_(True))
         return query.all()

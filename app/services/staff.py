@@ -8,12 +8,12 @@ from app.schemas.staff import StaffCreate, StaffUpdate
 class StaffService:
 
     @staticmethod
-    def create_staff(db: Session, data: StaffCreate):
-        return StaffRepository.create(db, data)
+    def create_staff(db: Session, data: StaffCreate, *, business_id: int):
+        return StaffRepository.create(db, data, business_id=business_id)
 
     @staticmethod
-    def get_staff(db: Session, staff_id: int):
-        staff = StaffRepository.get_by_id(db, staff_id)
+    def get_staff(db: Session, staff_id: int, *, business_id: int):
+        staff = StaffRepository.get_by_id(db, staff_id, business_id=business_id)
         if not staff:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -22,19 +22,21 @@ class StaffService:
         return staff
 
     @staticmethod
-    def list_staff(db: Session, only_active: bool = True):
-        return StaffRepository.list(db, only_active)
+    def list_staff(db: Session, only_active: bool = True, *, business_id: int):
+        return StaffRepository.list(db, only_active, business_id=business_id)
 
     @staticmethod
     def update_staff(
         db: Session,
         staff_id: int,
-        data: StaffUpdate
+        data: StaffUpdate,
+        *,
+        business_id: int,
     ):
-        staff = StaffService.get_staff(db, staff_id)
+        staff = StaffService.get_staff(db, staff_id, business_id=business_id)
         return StaffRepository.update(db, staff, data)
 
     @staticmethod
-    def delete_staff(db: Session, staff_id: int):
-        staff = StaffService.get_staff(db, staff_id)
+    def delete_staff(db: Session, staff_id: int, *, business_id: int):
+        staff = StaffService.get_staff(db, staff_id, business_id=business_id)
         return StaffRepository.soft_delete(db, staff)
